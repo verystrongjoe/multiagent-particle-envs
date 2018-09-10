@@ -91,15 +91,28 @@ class MultiAgentEnv(gym.Env):
         # record observation for each agent
         for agent in self.agents:
             obs_n.append(self._get_obs(agent))
-            reward_n.append(self._get_reward(agent))
+            # reward_n.append(self._get_reward(agent))
             done_n.append(self._get_done(agent))
-
             info_n['n'].append(self._get_info(agent))
+
+        # todo : change one unified reward
+        unified_reward = 0
+        ds, ns = [], []
+        for agent in self.agents:
+            d, n = self._get_reward(agent)
+            ds.append(d)
+            ns.append(n)
+
+        r = - min(ds) - sum(ns)
+
+        for agent in self.agents:
+            # reward_n.append(self._get_reward(agent))
+            reward_n.append(r)
 
         # all agents get total reward in cooperative case
         reward = np.sum(reward_n)
-        if self.shared_reward:
-            reward_n = [reward] * self.n
+        # if self.shared_reward:
+        #     reward_n = [reward] * self.n
 
         return obs_n, reward_n, done_n, info_n
 
