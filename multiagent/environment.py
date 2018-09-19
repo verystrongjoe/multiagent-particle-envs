@@ -11,10 +11,13 @@ class MultiAgentEnv(gym.Env):
         'render.modes' : ['human', 'rgb_array']
     }
 
-    def __init__(self, world, reset_callback=None, reward_callback=None,
+    def __init__(self, scenario_name, world, reset_callback=None, reward_callback=None,
                  observation_callback=None, info_callback=None,
                  done_callback=None, shared_viewer=True):
 
+        # todo : add params for distinguishing environments
+        self.baseline = True
+        self.scenario_name = scenario_name
         self.world = world
         self.agents = self.world.policy_agents
         # set required vectorized gym env property
@@ -40,7 +43,7 @@ class MultiAgentEnv(gym.Env):
         self.observation_space = []
         for agent in self.agents:
             total_action_space = []
-            # physical action space
+            # physical action spacelll
             if self.discrete_action_space:
                 u_action_space = spaces.Discrete(world.dim_p * 2 + 1)
             else:
@@ -88,31 +91,38 @@ class MultiAgentEnv(gym.Env):
             self._set_action(action_n[i], agent, self.action_space[i])
         # advance world state
         self.world.step()
+
+        # todo : change one unified reward
+        if self.scenario_name.endswith('unified_reward'):
+            self.baseline = False
+
         # record observation for each agent
         for agent in self.agents:
             obs_n.append(self._get_obs(agent))
-            # reward_n.append(self._get_reward(agent))
+            if self.baseline:
+                reward_n.append(self._get_reward(agent))
             done_n.append(self._get_done(agent))
             info_n['n'].append(self._get_info(agent))
 
-        # todo : change one unified reward
-        unified_reward = 0
-        ds, ns = [], []
-        for agent in self.agents:
-            d, n = self._get_reward(agent)
-            ds.append(d)
-            ns.append(n)
+        if not self.baseline:
+            ds, ns = [], []
 
-        r = - min(ds) - sum(ns)
+            for agent in self.agents:
+                d, n = self._get_reward(agent)
+                ds.append(d)
+                ns.append(n)
 
-        for agent in self.agents:
-            # reward_n.append(self._get_reward(agent))
-            reward_n.append(r)
+            r = - min(ds) - sum(ns)
 
+            for agent in self.agents:
+                # reward_n.append(self._get_reward(agent))
+                reward_n.append(r)
+
+        if self.baseline:
         # all agents get total reward in cooperative case
-        reward = np.sum(reward_n)
-        # if self.shared_reward:
-        #     reward_n = [reward] * self.n
+            reward = np.sum(reward_n)
+            if self.shared_reward:
+                reward_n = [reward] * self.n
 
         return obs_n, reward_n, done_n, info_n
 
