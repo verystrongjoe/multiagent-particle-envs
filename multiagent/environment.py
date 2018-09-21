@@ -18,6 +18,12 @@ class MultiAgentEnv(gym.Env):
         # todo : add params for distinguishing environments
         self.baseline = True
         self.scenario_name = scenario_name
+
+        if 'bicnet' in self.scenario_name:
+            self.bicnet = True
+        if 'local_observation' in self.scenario_name:
+            self.local_obseravtion = True
+
         self.world = world
         self.agents = self.world.policy_agents
         # set required vectorized gym env property
@@ -35,7 +41,7 @@ class MultiAgentEnv(gym.Env):
         # if true, even the action is continuous, action will be performed discretely
         self.force_discrete_action = world.discrete_action if hasattr(world, 'discrete_action') else False
         # if true, every agent has the same reward
-        self.shared_reward = world.collaborative if hasattr(world, 'collaborative') else False
+        self.shared_reward = world.collaborative if not self.bicnet and hasattr(world, 'collaborative') else False
         self.time = 0
 
         # configure spaces
@@ -69,7 +75,8 @@ class MultiAgentEnv(gym.Env):
                 self.action_space.append(total_action_space[0])
             # observation space
             obs_dim = len(observation_callback(agent, self.world))
-            self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(obs_dim,), dtype=np.float32))
+            self.observation_space.append(
+                spaces.Box(low=-np.inf, high=+np.inf, shape=(obs_dim,), dtype=np.float32))
             agent.action.c = np.zeros(self.world.dim_c)
 
         # rendering
@@ -119,9 +126,9 @@ class MultiAgentEnv(gym.Env):
                 reward_n.append(r)
 
         if self.baseline:
-        # all agents get total reward in cooperative case
-            reward = np.sum(reward_n)
+            # all agents get total reward in cooperative case
             if self.shared_reward:
+                reward = np.sum(reward_n)
                 reward_n = [reward] * self.n
 
         return obs_n, reward_n, done_n, info_n
