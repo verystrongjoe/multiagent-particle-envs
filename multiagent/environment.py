@@ -18,6 +18,7 @@ class MultiAgentEnv(gym.Env):
         # todo : add params for distinguishing environments
         self.baseline = True
         self.scenario_name = scenario_name
+        self.bicnet = False
 
         if 'bicnet' in self.scenario_name:
             self.bicnet = True
